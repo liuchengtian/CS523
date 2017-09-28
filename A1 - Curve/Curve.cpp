@@ -40,7 +40,7 @@ void Curve::addControlPoints(const std::vector<CurvePoint>& inputPoints)
 	sortControlPoints();
 }
 
-// Draw the curve shape on screen, usign window as step size (bigger window: less accurate shape)
+// Draw the curve shape on screen, using window as step size (bigger window: less accurate shape)
 void Curve::drawCurve(Color curveColor, float curveThickness, int window)
 {
 #ifdef ENABLE_GUI
@@ -53,22 +53,22 @@ void Curve::drawCurve(Color curveColor, float curveThickness, int window)
 
 	float start_time = controlPoints.front().time;
 	float end_time = controlPoints.back().time;
-	float interval = end_time - start_time;
+	float interval = end_time - start_time; 
 
-	int numberPoints = (int)(interval / window);
+	int numberPoints = (int)(interval / window); //the number of the points needed
 
 	float time = start_time + window;
-	Point prev = controlPoints.front().position;
+	Point prev = controlPoints.front().position; //draw from the prev to curr
 
 	for (int i = 0; i < numberPoints; i++) {
 		Point curr;
 
-		//if observing the last point, set time to end_time
+		//set time to end_time if it is the last point
 		if (i == numberPoints - 1) {
 			curr = controlPoints.back().position;
 			time = end_time;
 		}
-		else if (calculatePoint(curr, time) == false) return;
+		else if (calculatePoint(curr, time) == false) return; //make sure there is at least two control points
 
 		DrawLib::drawLine(prev, curr, curveColor, curveThickness);
 		prev = curr;
@@ -140,20 +140,20 @@ bool Curve::findTimeInterval(unsigned int& nextPoint, float time)
 Point Curve::useHermiteCurve(const unsigned int nextPoint, const float time)
 {
 	Point newPosition;
+	
 	float normalTime, intervalTime;
-
-	Point p1,p2,s1,s2;Vector v1,v2;
-
-	intervalTime = controlPoints[nextPoint].time - controlPoints[nextPoint-1].time;
-	p1=controlPoints[nextPoint-1].position;p2=controlPoints[nextPoint].position;
-	v1=controlPoints[nextPoint-1].tangent;v2=controlPoints[nextPoint].tangent;
-	s1=Point(v1.x,v1.y,v1.z)*intervalTime;s2=Point(v2.x,v2.y,v2.z)*intervalTime;
-	//velocities should change because time interval is normalized
-	float t=(time-controlPoints[nextPoint-1].time)/intervalTime;
-	float t3 = std::pow(t, 3);
+	Point p1,p2;Vector tan1,tan2;
+	
+	// Calculate position at t = time on Hermite curve
+	intervalTime = controlPoints[nextPoint].time - controlPoints[nextPoint-1].time; //time between two points
+	p1 = controlPoints[nextPoint-1].position; p2 = controlPoints[nextPoint].position; //position of two points
+	tan1 = controlPoints[nextPoint-1].tangent; tan2 = controlPoints[nextPoint].tangent; // tangent of two points
+	float t = (time-controlPoints[nextPoint-1].time)/intervalTime;
 	float t2 = std::pow(t, 2);
-	newPosition=(2*t3-3*t2+1)*p1+(-2*t3+3*t2)*p2+(t3-2*t2+t)*s1+(t3-t2)*s2;
-
+	float t3 = std::pow(t, 3);
+	newPosition=(2*t3-3*t2+1)*p1 + (-2*t3+3*t2)*p2 + (t3-2*t2+t)*tan1 + (t3-t2)*tan2;
+	//p(t) = h00(t)p0 + h10(t)m0 + h01(t)p1 + h11(t)m1 see in https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+	
 	// Return result
 	return newPosition;
 }
@@ -163,7 +163,35 @@ Point Curve::useCatmullCurve(const unsigned int nextPoint, const float time)
 {
 	Point newPosition;
 
+	// Calculate time interval, and normal time required for later curve calculations
+	float normalTime, intervalTime;
+	intervalTime = controlPoints[nextPoint].time - controlPoints[nextPoint-1].time;
+	
+	float t = (time-controlPoints[nextPoint-1].time)/intervalTime;
+	float t2 = std::pow(t, 2);
+	float t3 = std::pow(t, 3);
 
-	// Return result
+	Vector s0, s1;
+	
+	if (nextPoint == 1){
+		s0 = controlPoints[nextPoint].position - controlPoints[nextPoint-1].position;
+		s1 = (controlPoints[nextPoint+1].position - controlPoints[nextPoint-1].position) / 2;
+	}
+	else if (nextPoint == getControPoints().size() - 1){
+		s0 = (controlPoints[nextPoint].position - controlPoints[nextPoint - 2].position) / 2;
+		s1 = controlPoints[nextPoint].position - controlPoints[nextPoint-1].position;
+	}
+	else{
+	//if (nextPoint>1 && nextPoint<getControPoints().size()-1){
+		s0 = (controlPoints[nextPoint].position - controlPoints[nextPoint - 2].position) / 2;
+		s1 = (controlPoints[nextPoint + 1].position - controlPoints[nextPoint - 1].position) / 2;
+	}
+
+	newPosition = (2*t3-3*t2+1)*controlPoints[nextPoint-1].position + 
+	(-2*t3+3*t2)*controlPoints[nextPoint].position + (t3-2*t2+t)*s0 + (t3-t2)*s1;
+	//p(t) = h00(t)p0 + h10(t)m0 + h01(t)p1 + h11(t)m1, where mk = (pk+1 - pk-1)/(tk+1 -tk-1)
+	//see in https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+
+	// Return result position
 	return newPosition;
 }
