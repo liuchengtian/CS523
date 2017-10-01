@@ -140,18 +140,19 @@ bool Curve::findTimeInterval(unsigned int& nextPoint, float time)
 Point Curve::useHermiteCurve(const unsigned int nextPoint, const float time)
 {
 	Point newPosition;
-	
 	float normalTime, intervalTime;
-	Point p1,p2;Vector tan1,tan2;
-	
+
 	// Calculate position at t = time on Hermite curve
-	intervalTime = controlPoints[nextPoint].time - controlPoints[nextPoint-1].time; //time between two points
-	p1 = controlPoints[nextPoint-1].position; p2 = controlPoints[nextPoint].position; //position of two points
-	tan1 = controlPoints[nextPoint-1].tangent; tan2 = controlPoints[nextPoint].tangent; // tangent of two points
-	float t = (time-controlPoints[nextPoint-1].time)/intervalTime;
+	Point p1,p2,tan1_end,tan2_end;Vector tan1,tan2;//a,b,c,d are vectors for coefficients for each of x,y,z
+	intervalTime = controlPoints[nextPoint].time-controlPoints[nextPoint-1].time;
+	p1=controlPoints[nextPoint-1].position;p2=controlPoints[nextPoint].position;
+	tan1=controlPoints[nextPoint-1].tangent;tan2=controlPoints[nextPoint].tangent;
+	tan1_end=Point(tan1.x,tan1.y,tan1.z)*intervalTime;tan2_end=Point(tan2.x,tan2.y,tan2.z)*intervalTime;
+
+	float t=(time-controlPoints[nextPoint-1].time)/intervalTime;
 	float t2 = std::pow(t, 2);
 	float t3 = std::pow(t, 3);
-	newPosition=(2*t3-3*t2+1)*p1 + (-2*t3+3*t2)*p2 + (t3-2*t2+t)*tan1 + (t3-t2)*tan2;
+	newPosition=(2*t3-3*t2+1)*p1 + (-2*t3+3*t2)*p2 + (t3-2*t2+t)*tan1_end + (t3-t2)*tan2_end;
 	//p(t) = h00(t)p0 + h10(t)m0 + h01(t)p1 + h11(t)m1 see in https://en.wikipedia.org/wiki/Cubic_Hermite_spline
 	
 	// Return result
