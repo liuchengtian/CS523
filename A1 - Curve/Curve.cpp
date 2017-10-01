@@ -78,10 +78,21 @@ void Curve::drawCurve(Color curveColor, float curveThickness, int window)
 #endif
 }
 
-// Sort controlPoints vector in ascending order: min-first
+bool compPoints(CurvePoint a, CurvePoint b)
+{
+	return (a.time < b.time);
+}
+
+// Sort controlPoints vector in ascending order
 void Curve::sortControlPoints()
 {
-	sort(controlPoints.begin(),controlPoints.end(),[](const  CurvePoint& x,const CurvePoint& y){if (x.time<y.time) {return true;}else {return false;}});
+	std::sort(controlPoints.begin(), controlPoints.end(), compPoints);
+	for (int i = 0; i < controlPoints.size() - 1; i++) {
+		// delete control points which have the same time
+		if (controlPoints[i].time == controlPoints[i + 1].time) {
+			controlPoints.erase(controlPoints.begin() + i + 1);
+		}
+	}
 	return;
 }
 
