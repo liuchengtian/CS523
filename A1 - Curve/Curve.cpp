@@ -143,7 +143,7 @@ bool Curve::findTimeInterval(unsigned int& nextPoint, float time)
 			return true;
 		}
 	}
-	std::cerr <<"Error in : findTimeInterval";
+	//std::cerr <<"Error in : findTimeInterval";
 	return false;
 }
 
