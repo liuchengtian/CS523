@@ -70,7 +70,7 @@ struct Edge
 	int index;
 };
 
-Edge findCloestEdge(std::vector<Util::Vector>& simplex)
+Edge findCloestEdge(std::vector<Util::Vector>& simplexes)
 {
 	Edge closestEdge;
 	float dist;
@@ -78,15 +78,15 @@ Edge findCloestEdge(std::vector<Util::Vector>& simplex)
 	float shortestDist = 99999;
 	int j = 0;
 
-	for (int i = 0; i < simplex.size(); i++)
+	for (int i = 0; i < simplexes.size(); i++)
 	{
 		j = i + 1;
-		if (j == simplexList.size()) j = 0;
+		if (j == simplexes.size()) j = 0;
 				
-		Util::Vector A = simplex[i];
-		Util::Vector B = simplex[j];
+		Util::Vector A = simplexes[i];
+		Util::Vector B = simplexes[j];
 
-		Util::Vector AB = simplex[j] - simplex[i];
+		Util::Vector AB = simplexes[j] - simplexes[i];
 		Util::Vector AO = -1 * A;
 
 		if (fabs(fabs(AB*AO) - AB.norm() * AO.norm()) >= 0.0001)
