@@ -170,6 +170,7 @@ bool containsOrigin(std::vector<Util::Vector> &simplexes)
 		return true;
 	}
 }
+
 void EPA(float& return_penetration_depth, Util::Vector& return_penetration_vector, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB, std::vector<Util::Vector> &simplex)
 {
 	Edge closestEdge;
@@ -191,15 +192,8 @@ void EPA(float& return_penetration_depth, Util::Vector& return_penetration_vecto
 	}
 }
 
-//Look at the GJK_EPA.h header file for documentation and instructions
-//input: polygon A and B
-//output: bool ifCollide, penetration_depth, penetration_vector 
-//see in page 56 of 04-discrete-collisions.pdf
-bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector& return_penetration_vector, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB)
-{
-	//Simplex to be build using points found via Minkowski differences
-	std::vector<Util::Vector> simplexes;
-
+// input Polygon A & B, simplexes, return simplexes and is_colliding 
+void GJK(bool& is_colliding, std::vector<Util::Vector> &simplexes, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB){
 	//gets centers of Minkowski difference via difference of center of both shapes.
 	Util::Vector direction = gerCenter(_shapeA) - gerCenter(_shapeB);
 
@@ -216,17 +210,18 @@ bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector&
 		//get new direction
 		direction = getDirection(simplexes);
 
-		//if ABO is in the same line
+		//if ABO is in the same line, for testcase 1, no.1 and no.5
 		if (direction == Util::Vector(0, 0, 0)) {
 			Util::Vector pt1 = simplexes[0];
 			Util::Vector pt2 = simplexes[1];
 			//origin on edge
 			if (checkABO(pt1, pt2)) {
-				EPA(return_penetration_depth, return_penetration_vector, _shapeA, _shapeB, simplexes);
-				return true;
+				is_colliding = true;
+				return;
 			}
 			else {
-				return false;
+				is_colliding = false;
+				return;
 			}
 		}
 
@@ -237,16 +232,36 @@ bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector&
 		//check simplex contains origin
 		if (simplexes[2] * direction <= 0) {
 			//simplex past origin
-			return false;
+			is_colliding = false;
+			return;
 		}
 		else {
 			//Check the simplex area
 			if (containsOrigin(simplexes))
 			{
-				EPA(return_penetration_depth, return_penetration_vector, _shapeA, _shapeB, simplexes);
-				return true;
+				is_colliding = true;
+				return;
 			}
 		}
 
 	}
+}
+
+//Look at the GJK_EPA.h header file for documentation and instructions
+//input: polygon A and B
+//output: bool ifCollide, penetration_depth, penetration_vector 
+//see in page 56 of 04-discrete-collisions.pdf
+bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector& return_penetration_vector, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB)
+{
+	//Simplex to be build using points found via Minkowski differences
+	std::vector<Util::Vector> simplexes;
+	
+	bool is_colliding = false;
+	GJK(is_colliding, simplexes, _shapeA, _shapeB);
+	
+	if (is_colliding){
+		EPA(return_penetration_depth, return_penetration_vector, _shapeA, _shapeB, simplexes);
+		return true;
+	}
+	else return false;
 }
