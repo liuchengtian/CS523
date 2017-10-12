@@ -1,0 +1,14 @@
+PartC:
+
+The diffrence of the outputs between PartA and PartB is that all polygons in PartA are convex and all polygons in Part B are concave. 
+
+The output of PartB is incorrect with Standard GJK (should be no collision).
+
+A new fixed polygons2 file named polygons2fixedfinal.xml solves this problem by changing all polygons in PartB to convex (with correct output of no collision).
+
+
+PartD:
+
+PartD also has the same incorrect output as PartB (should be no collision).
+
+Convex polygonal decomposition should be used to solve thiss problem without changing xml input.
