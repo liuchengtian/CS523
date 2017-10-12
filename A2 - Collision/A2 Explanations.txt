@@ -4,7 +4,7 @@ The diffrence of the outputs between PartA and PartB is that all polygons in Par
 
 The output of PartB is incorrect with Standard GJK (should be no collision).
 
-A new fixed polygons2 file named polygons2fixedfinal.xml solves this problem by changing all polygons in PartB to convex (with correct output of no collision).
+A new fixed polygons2 file named polygons2fixedfinal.xml solves this problem by changing all polygons in PartB to convex (with correct output of no collision). In this file we also rearranged the sequence of vertices of polygons to be plotted to output the right shapes of polygons.
 
 
 PartD:
