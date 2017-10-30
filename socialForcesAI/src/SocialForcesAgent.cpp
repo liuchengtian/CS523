@@ -8,6 +8,8 @@
 #include "SocialForcesAgent.h"
 #include "SocialForcesAIModule.h"
 #include "SocialForces_Parameters.h"
+#include <cstdlib>
+#include <ctime>
 // #include <math.h>
 
 // #include "util/Geometry.h"
@@ -28,6 +30,15 @@ using namespace SteerLib;
 
 SocialForcesAgent::SocialForcesAgent()
 {
+	state = PURSUE_AND_EVADE;
+	
+	// Set the first agent loaded to be the leader if Leader Follow mod activated.
+	static bool noLeader = true;
+	if (state == LEADER_FOLLOWING && noLeader) {
+		type = LEADER;
+		noLeader = false;
+	}
+
 	_SocialForcesParams.sf_acceleration = sf_acceleration;
 	_SocialForcesParams.sf_personal_space_threshold = sf_personal_space_threshold;
 	_SocialForcesParams.sf_agent_repulsion_importance = sf_agent_repulsion_importance;
@@ -84,6 +95,12 @@ void SocialForcesAgent::disable()
 
 }
 
+int SocialForcesAgent::rand_num(int range)
+{
+	srand((unsigned)time(NULL));
+ 	return rand()%range;
+}
+
 void SocialForcesAgent::reset(const SteerLib::AgentInitialConditions & initialConditions, SteerLib::EngineInterface * engineInfo)
 {
 	// compute the "old" bounding box of the agent before it is reset.  its OK that it will be invalid if the agent was previously disabled
@@ -108,13 +125,42 @@ void SocialForcesAgent::reset(const SteerLib::AgentInitialConditions & initialCo
 	_radius = initialConditions.radius;
 	_velocity = initialConditions.speed * _forward;
 	// std::cout << "inital colour of agent " << initialConditions.color << std::endl;
-	if ( initialConditions.colorSet == true )
-	{
-		this->_color = initialConditions.color;
-	}
-	else
-	{
-		this->_color = Util::gBlue;
+	
+	switch (state) {
+	case PURSUE_AND_EVADE:
+		switch (rand_num(3)) {
+		case 0:
+			type = PURSUE;
+			this->_color = Util::gGreen;
+			break;
+		case 1:
+			type = EVADE;
+			this->_color = Util::gRed;
+			break;
+		default:
+			type = NONE;
+			this->_color = Util::gBlue;
+			break;
+		}
+		break;
+	case LEADER_FOLLOWING:
+		if (type == LEADER) {
+			this->_color = Util::gGreen;
+		} else {
+			type = NONE;
+			this->_color = Util::gBlue;
+		}
+		break;
+	default:
+		if ( initialConditions.colorSet == true )
+		{
+			this->_color = initialConditions.color;
+		}
+		else
+		{
+			this->_color = Util::gBlue;
+		}
+		break;
 	}
 
 	// compute the "new" bounding box of the agent
@@ -145,11 +191,11 @@ void SocialForcesAgent::reset(const SteerLib::AgentInitialConditions & initialCo
 	{
 		_goalQueue.pop();
 	}
-
 	// iterate over the sequence of goals specified by the initial conditions.
 	for (unsigned int i=0; i<initialConditions.goals.size(); i++) {
 		if (initialConditions.goals[i].goalType == SteerLib::GOAL_TYPE_SEEK_STATIC_TARGET ||
-				initialConditions.goals[i].goalType == GOAL_TYPE_AXIS_ALIGNED_BOX_GOAL)
+				initialConditions.goals[i].goalType == GOAL_TYPE_AXIS_ALIGNED_BOX_GOAL ||
+				initialConditions.goals[i].goalType == GOAL_TYPE_FLEE_STATIC_TARGET)
 		{
 			if (initialConditions.goals[i].targetIsRandom)
 			{
@@ -795,6 +841,27 @@ void SocialForcesAgent::updateAI(float timeStamp, float dt, unsigned int frameNu
 	}
 	// _prefVelocity = goalDirection * PERFERED_SPEED;
 	Util::Vector prefForce = (((goalDirection * PERFERED_SPEED) - velocity()) / (_SocialForcesParams.sf_acceleration/dt)); //assumption here
+	Util::Vector vec;
+	switch (state) {
+	case PURSUE_AND_EVADE:
+		vec = pursueEvade(dt);
+		if (vec.lengthSquared() > 0.0f) {
+			prefForce += normalize(vec) / 8.0f;
+		}
+		break;
+	case LEADER_FOLLOWING:
+		vec = leaderFollow(dt);
+		if (vec.lengthSquared() > 0.0f) {
+			if (type == LEADER) {
+				prefForce += normalize(vec);
+			} else {
+				prefForce = normalize(vec);
+			}
+		}
+		break;
+	default:
+		break;
+	}
 	prefForce = prefForce + velocity();
 	// _velocity = prefForce;
 
@@ -985,3 +1052,112 @@ void SocialForcesAgent::draw()
 #endif
 }
 
+/*AIType SocialForcesAgent::getType() {
+	return type;
+}
+
+Util::Vector SocialForcesAgent::wallFollow(float dt) {
+	Util::Vector future_position = Util::Vector(0.0f, 0.0f, 0.0f);
+	std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
+	getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
+		_position.x - (this->_radius + _SocialForcesParams.sf_query_radius),
+		_position.x + (this->_radius + _SocialForcesParams.sf_query_radius),
+		_position.z - (this->_radius + _SocialForcesParams.sf_query_radius),
+		_position.z + (this->_radius + _SocialForcesParams.sf_query_radius),
+		dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
+	SocialForcesAgent* agent;
+	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin(); neighbour != _neighbors.end(); neighbour++)
+		// for (int a =0; a < tmp_agents.size(); a++)
+	{
+		if ((*neighbour)->isAgent())
+		{
+			agent = (SocialForcesAgent*) dynamic_cast<SteerLib::AgentInterface *>(*neighbour);
+
+			//Wall follower code here
+			future_position = agent->position() + agent->velocity() * dt - position();
+		}
+	}
+}
+
+<<<<<<< HEAD
+=======
+bool SocialForcesAgent::canMoveForward() {
+	return true;
+}*/
+
+Util::Vector SocialForcesAgent::pursueEvade(float dt) {
+	Util::Vector result = Util::Vector(0.0f, 0.0f, 0.0f);
+	std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
+		getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
+				_position.x-(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.x+(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.z-(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.z+(this->_radius + _SocialForcesParams.sf_query_radius),
+				dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
+	SocialForcesAgent* agent;
+	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin();  neighbour != _neighbors.end();  neighbour++)
+	{
+		if ( (*neighbour)->isAgent() )
+		{
+			agent = (SocialForcesAgent*) dynamic_cast<SteerLib::AgentInterface *>(*neighbour);
+
+			switch (agent->type) {
+			case PURSUE:
+				if (type != PURSUE) {
+					/*result += Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
+								agent->position().y + agent->velocity().y * dt - position().y, 
+								agent->position().z + agent->velocity().z * dt - position().z);*/
+					result += agent->position() + agent->velocity() * dt - position();
+				}
+				break;
+			case EVADE:
+				/*result -= Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
+							agent->position().y + agent->velocity().y * dt - position().y, 
+							agent->position().z + agent->velocity().z * dt - position().z);*/
+				result -= agent->position() + agent->velocity() * dt - position();
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+Util::Vector SocialForcesAgent::leaderFollow(float dt) {
+	Util::Vector result = Util::Vector(0.0f, 0.0f, 0.0f);
+	Util::Vector separation = Util::Vector(0.0f, 0.0f, 0.0f);
+	if (type != LEADER) {
+		int neighbors = 0;
+		std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
+		getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
+				_position.x-(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.x+(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.z-(this->_radius + _SocialForcesParams.sf_query_radius),
+				_position.z+(this->_radius + _SocialForcesParams.sf_query_radius),
+				dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
+		SocialForcesAgent* agent;
+		for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin();  neighbour != _neighbors.end();  neighbour++)
+		{
+			if ( (*neighbour)->isAgent() )
+			{
+				agent = (SocialForcesAgent*) dynamic_cast<SteerLib::AgentInterface *>(*neighbour);
+				separation += Util::Vector(agent->position() - position());
+				neighbors++;
+				if (agent->type == LEADER && type != LEADER) {
+					Util::Vector tmp;
+					tmp += Util::Vector(agent->position() - agent->velocity() - position());
+					// Arrival stuff.
+					if (tmp.lengthSquared() > 0.0f) {
+						result = normalize(tmp) * tmp.lengthSquared();
+					}
+				}
+			}
+		}
+		if (neighbors > 0) {
+			separation /= -neighbors;
+			separation = normalize(separation) * 1.5f;
+		}
+	}
+	return result + separation;
+}

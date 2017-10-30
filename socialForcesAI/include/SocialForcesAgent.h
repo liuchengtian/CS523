@@ -28,12 +28,18 @@
 // #define DRAW_HISTORIES 1
 // #define DRAW_COLLISIONS 1
 
-
+enum AIState {
+	PURSUE_AND_EVADE, LEADER_FOLLOW, DEFAULT
+};
+enum AIType {
+	PURSUE, EVADE, LEADER, NONE
+};
 class SocialForcesAgent : public SteerLib::AgentInterface
 {
 public:
 	SocialForcesAgent();
 	~SocialForcesAgent();
+	int rand_num(int range);
 	void reset(const SteerLib::AgentInitialConditions & initialConditions, SteerLib::EngineInterface * engineInfo);
 	void updateAI(float timeStamp, float dt, unsigned int frameNumber);
 	void disable();
@@ -90,7 +96,14 @@ protected:
 	// Used to store Waypoints between goals
 	// A waypoint is choosen every FURTHEST_LOCAL_TARGET_DISTANCE
 
+	
 private:
+	AIState state;
+	AIType type;
+	
+	Util::Vector wallFollow(float dt);
+	Util::Vector pursueEvade(float dt);
+	Util::Vector leaderFollow(float dt);
 	// bool runLongTermPlanning();
 	// bool reachedCurrentWaypoint();
 	// void updateMidTermPath();
