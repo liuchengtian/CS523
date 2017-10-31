@@ -126,6 +126,7 @@ void SocialForcesAgent::reset(const SteerLib::AgentInitialConditions & initialCo
 	_velocity = initialConditions.speed * _forward;
 	// std::cout << "inital colour of agent " << initialConditions.color << std::endl;
 	
+	// changing color for different states
 	switch (state) {
 	case PURSUE_AND_EVADE:
 		switch (rand_num(3)) {
@@ -841,12 +842,12 @@ void SocialForcesAgent::updateAI(float timeStamp, float dt, unsigned int frameNu
 	}
 	// _prefVelocity = goalDirection * PERFERED_SPEED;
 	Util::Vector prefForce = (((goalDirection * PERFERED_SPEED) - velocity()) / (_SocialForcesParams.sf_acceleration/dt)); //assumption here
-	Util::Vector vec;
+	Util::Vector vec; 
 	switch (state) {
 	case PURSUE_AND_EVADE:
 		vec = pursueEvade(dt);
 		if (vec.lengthSquared() > 0.0f) {
-			prefForce += normalize(vec) / 8.0f;
+			prefForce += normalize(vec);
 		}
 		break;
 	case LEADER_FOLLOWING:
@@ -1056,12 +1057,13 @@ void SocialForcesAgent::draw()
 Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 	Util::Vector result = Util::Vector(0.0f, 0.0f, 0.0f);
 	std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
-		getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
-				_position.x-(this->_radius + _SocialForcesParams.sf_query_radius),
-				_position.x+(this->_radius + _SocialForcesParams.sf_query_radius),
-				_position.z-(this->_radius + _SocialForcesParams.sf_query_radius),
-				_position.z+(this->_radius + _SocialForcesParams.sf_query_radius),
-				dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
+	// find agents within the range of social force
+	getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
+			_position.x-(this->_radius + _SocialForcesParams.sf_query_radius),
+			_position.x+(this->_radius + _SocialForcesParams.sf_query_radius),
+			_position.z-(this->_radius + _SocialForcesParams.sf_query_radius),
+			_position.z+(this->_radius + _SocialForcesParams.sf_query_radius),
+			dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
 	SocialForcesAgent* agent;
 	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin();  neighbour != _neighbors.end();  neighbour++)
 	{
@@ -1075,6 +1077,7 @@ Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 					/*result += Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
 								agent->position().y + agent->velocity().y * dt - position().y, 
 								agent->position().z + agent->velocity().z * dt - position().z);*/
+					// the pursue agent needs a force to pull it to the position
 					result += agent->position() + agent->velocity() * dt - position();
 				}
 				break;
@@ -1082,6 +1085,7 @@ Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 				/*result -= Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
 							agent->position().y + agent->velocity().y * dt - position().y, 
 							agent->position().z + agent->velocity().z * dt - position().z);*/
+				// the evade agent need a force to push it away from pursue
 				result -= agent->position() + agent->velocity() * dt - position();
 				break;
 			default:
@@ -1089,7 +1093,7 @@ Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 			}
 		}
 	}
-	return result;
+	return result / 8.0f;
 }
 
 Util::Vector SocialForcesAgent::leaderFollow(float dt) {
@@ -1098,6 +1102,7 @@ Util::Vector SocialForcesAgent::leaderFollow(float dt) {
 	if (type != LEADER) {
 		int neighbors = 0;
 		std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
+		// find agents within the range of social force
 		getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
 				_position.x-(this->_radius + _SocialForcesParams.sf_query_radius),
 				_position.x+(this->_radius + _SocialForcesParams.sf_query_radius),
@@ -1107,6 +1112,7 @@ Util::Vector SocialForcesAgent::leaderFollow(float dt) {
 		SocialForcesAgent* agent;
 		for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin();  neighbour != _neighbors.end();  neighbour++)
 		{
+			// apply a result for all agents
 			if ( (*neighbour)->isAgent() )
 			{
 				agent = (SocialForcesAgent*) dynamic_cast<SteerLib::AgentInterface *>(*neighbour);
@@ -1122,6 +1128,7 @@ Util::Vector SocialForcesAgent::leaderFollow(float dt) {
 				}
 			}
 		}
+		// add separation to keep a distance between every agents
 		if (neighbors > 0) {
 			separation /= -neighbors;
 			separation = normalize(separation) * 1.5f;
