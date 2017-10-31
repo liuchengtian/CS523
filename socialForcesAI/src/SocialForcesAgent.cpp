@@ -1052,38 +1052,6 @@ void SocialForcesAgent::draw()
 #endif
 }
 
-/*AIType SocialForcesAgent::getType() {
-	return type;
-}
-
-Util::Vector SocialForcesAgent::wallFollow(float dt) {
-	Util::Vector future_position = Util::Vector(0.0f, 0.0f, 0.0f);
-	std::set<SteerLib::SpatialDatabaseItemPtr> _neighbors;
-	getSimulationEngine()->getSpatialDatabase()->getItemsInRange(_neighbors,
-		_position.x - (this->_radius + _SocialForcesParams.sf_query_radius),
-		_position.x + (this->_radius + _SocialForcesParams.sf_query_radius),
-		_position.z - (this->_radius + _SocialForcesParams.sf_query_radius),
-		_position.z + (this->_radius + _SocialForcesParams.sf_query_radius),
-		dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
-	SocialForcesAgent* agent;
-	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin(); neighbour != _neighbors.end(); neighbour++)
-		// for (int a =0; a < tmp_agents.size(); a++)
-	{
-		if ((*neighbour)->isAgent())
-		{
-			agent = (SocialForcesAgent*) dynamic_cast<SteerLib::AgentInterface *>(*neighbour);
-
-			//Wall follower code here
-			future_position = agent->position() + agent->velocity() * dt - position();
-		}
-	}
-}
-
-<<<<<<< HEAD
-=======
-bool SocialForcesAgent::canMoveForward() {
-	return true;
-}*/
 
 Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 	Util::Vector result = Util::Vector(0.0f, 0.0f, 0.0f);
