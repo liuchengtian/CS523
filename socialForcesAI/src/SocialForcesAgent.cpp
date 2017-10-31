@@ -30,7 +30,7 @@ using namespace SteerLib;
 
 SocialForcesAgent::SocialForcesAgent()
 {
-	state = PURSUE_AND_EVADE;
+	state = LEADER_FOLLOWING;
 	
 	// Set the first agent loaded to be the leader if Leader Follow mod activated.
 	static bool noLeader = true;
