@@ -29,7 +29,7 @@
 // #define DRAW_COLLISIONS 1
 
 enum AIState {
-	PURSUE_AND_EVADE, LEADER_FOLLOWING, DEFAULT
+	PURSUE_AND_EVADE, LEADER_FOLLOWING, GROWING_SPIRAL, DEFAULT
 };
 enum AIType {
 	PURSUE, EVADE, LEADER, NONE
@@ -104,6 +104,7 @@ private:
 	Util::Vector wallFollow(float dt);
 	Util::Vector pursueEvade(float dt);
 	Util::Vector leaderFollow(float dt);
+	Util::Vector growingSpiral(float dt);
 	// bool runLongTermPlanning();
 	// bool reachedCurrentWaypoint();
 	// void updateMidTermPath();

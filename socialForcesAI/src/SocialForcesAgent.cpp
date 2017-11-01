@@ -30,7 +30,7 @@ using namespace SteerLib;
 
 SocialForcesAgent::SocialForcesAgent()
 {
-	state = LEADER_FOLLOWING;
+	state = GROWING_SPIRAL;
 	
 	// Set the first agent loaded to be the leader if Leader Follow mod activated.
 	static bool noLeader = true;
@@ -853,11 +853,16 @@ void SocialForcesAgent::updateAI(float timeStamp, float dt, unsigned int frameNu
 	case LEADER_FOLLOWING:
 		vec = leaderFollow(dt);
 		if (vec.lengthSquared() > 0.0f) {
-			if (type == LEADER) {
-				prefForce += normalize(vec);
-			} else {
+			// for followers
+			if (type == NONE) {
 				prefForce = normalize(vec);
 			}
+		}
+		break;
+	case GROWING_SPIRAL:
+		vec = growingSpiral(dt);
+		if (vec.lengthSquared() > 0.0f) {
+			prefForce += normalize(vec);
 		}
 		break;
 	default:
@@ -1073,27 +1078,29 @@ Util::Vector SocialForcesAgent::pursueEvade(float dt) {
 
 			switch (agent->type) {
 			case PURSUE:
-				if (type != PURSUE) {
+				if (type == EVADE) {
 					/*result += Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
 								agent->position().y + agent->velocity().y * dt - position().y, 
 								agent->position().z + agent->velocity().z * dt - position().z);*/
-					// the pursue agent needs a force to pull it to the position
-					result += agent->position() + agent->velocity() * dt - position();
+					// the evade agent needs a force to push it away from the pursue agents
+					result -= agent->position() + agent->velocity() * dt - position();
 				}
 				break;
 			case EVADE:
 				/*result -= Util::Vector(agent->position().x + agent->velocity().x * dt - position().x, 
 							agent->position().y + agent->velocity().y * dt - position().y, 
 							agent->position().z + agent->velocity().z * dt - position().z);*/
-				// the evade agent need a force to push it away from pursue
-				result -= agent->position() + agent->velocity() * dt - position();
+				// the pursue agent need a force to pull it to the position
+				if (type == PURSUE) {
+					result += agent->position() + agent->velocity() * dt - position();
+				}
 				break;
 			default:
 				break;
 			}
 		}
 	}
-	return result / 8.0f;
+	return result / 9.0f;
 }
 
 Util::Vector SocialForcesAgent::leaderFollow(float dt) {
@@ -1135,4 +1142,22 @@ Util::Vector SocialForcesAgent::leaderFollow(float dt) {
 		}
 	}
 	return result + separation;
+}
+
+Util::Vector SocialForcesAgent::growingSpiral(float dt) {
+	Util::Vector result = Util::Vector(0.0f, 0.0f, 0.0f);
+	Util::Point pos = position();
+	float angle = 0.0f, r = 0.0f;
+	if (pos.x != 0){
+		angle = atan(pos.z/pos.x);
+	}
+	else angle = atan(pos.z / (pos.x + 0.0001f));
+	r = sqrt(pos.x * pos.x + pos.z * pos.z);
+	if (pos.x < 0.0f) {
+		result = r * Util::Vector(sin(angle), 0.0f, -cos(angle));
+	} else {
+		result = r * Util::Vector(-sin(angle), 0.0f, cos(angle));
+	}
+
+	return result;
 }
