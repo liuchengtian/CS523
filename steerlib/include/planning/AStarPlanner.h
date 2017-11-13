@@ -8,26 +8,257 @@
 #define __STEERLIB_A_STAR_PLANNER_H__
 
 
+#include <iostream>  
+#include <functional>  
+
 #include <vector>
 #include <stack>
 #include <set>
 #include <map>
 #include "SteerLib.h"
 
+
+const int StartIndex = 1;
+#define MIN_VALUE new AStarPlannerNode(Point(0.0f,0.0f,0.0f),-999999999,-999999999,NULL)
+
+using namespace std;
+using namespace SteerLib;
+
+
 namespace SteerLib
-{
+{ 
+		template <class ElemType>
+	class MyHeap{
+	private:
+		int numCounts; // number in heap
+
+	public:
+		MyHeap();
+
+		vector<ElemType> heapDataVec; // data in heap
+
+		void initHeap(ElemType *data, const int n);
+		void printfHeap(); // print heap
+		void makeHeap(); // make a new heap
+		ElemType top();
+		void insert(ElemType *elem); // insert a node to heap
+		void pop();
+		void adjustHeap(int childTree, ElemType adjustValue);
+		void percolateUp(int holeIndex, ElemType adjustValue);
+		bool empty(); // check if empty
+		bool find(ElemType element); // find if in heap
+		void remove(ElemType element); // remove value from heap
+		int size(); // return numCounts
+		void updateState(ElemType element); // update fn and gn in heap
+		ElemType getValue(ElemType element);
+	};
+
+	template <class ElemType>
+	MyHeap<ElemType>::MyHeap()
+		:numCounts(0)
+	{
+		heapDataVec.push_back(MIN_VALUE);
+	}
+
+
+	template <class ElemType>
+	void MyHeap<ElemType>::initHeap(ElemType *data, const int n)
+	{
+		for (int i = 0; i < n; ++i)
+		{
+			heapDataVec.push_back(*(data + i));
+			++numCounts;
+		}
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::printfHeap()
+	{
+		cout << "Heap : ";
+		for (int i = 1; i <= numCounts; ++i)
+		{
+			cout << heapDataVec[i]->f << " ";
+		}
+		cout << endl;
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::makeHeap()
+	{
+		if (numCounts < 2)
+			return; 
+		int parent = numCounts / 2;
+		while (1)
+		{
+			adjustHeap(parent, heapDataVec[parent]);
+			if (parent == StartIndex)
+				return;
+			--parent;
+		}
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::insert(ElemType* elem)
+	{
+		heapDataVec.push_back(*elem);
+		++numCounts;
+		percolateUp(numCounts, heapDataVec[numCounts]);
+	}
+
+	template <class ElemType>
+	ElemType MyHeap<ElemType>::top()
+	{
+		return heapDataVec[StartIndex];
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::pop()
+	{
+		if (heapDataVec.size() <= 1)
+		{
+			std::cout << "The heap is empty." << std::endl;
+			return;
+		}
+		//stage the last node, later put in the first position and adjust heap
+		ElemType adjustValue = heapDataVec[numCounts];
+		//put the first node in the last position and pop out  
+		heapDataVec[numCounts] = heapDataVec[StartIndex]; 
+		--numCounts;
+		heapDataVec.pop_back();
+
+		if (heapDataVec.size() == 1)
+			return;
+		adjustHeap(StartIndex, adjustValue);
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::adjustHeap(int childTree, ElemType adjustValue)
+	{ 
+		int holeIndex = childTree;
+		int secondChid = 2 * holeIndex + 1;
+		while (secondChid <= numCounts)
+		{
+			if (heapDataVec[secondChid] > heapDataVec[secondChid - 1])
+			{
+				--secondChid;
+			}
+
+			heapDataVec[holeIndex] = heapDataVec[secondChid];
+			holeIndex = secondChid;
+			secondChid = 2 * secondChid + 1;
+		}
+		if (secondChid == numCounts + 1)
+		{
+			heapDataVec[holeIndex] = heapDataVec[secondChid - 1];
+			holeIndex = secondChid - 1;
+		}
+		heapDataVec[holeIndex] = adjustValue;
+
+		percolateUp(holeIndex, adjustValue);
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::percolateUp(int holeIndex, ElemType adjustValue)
+	{
+		// switch while node is greater than its parent
+		int parentIndex = holeIndex / 2;
+		while (holeIndex > StartIndex && (heapDataVec[parentIndex] > adjustValue))
+		{
+			heapDataVec[holeIndex] = heapDataVec[parentIndex];
+			holeIndex = parentIndex;
+			parentIndex /= 2;
+		}
+		heapDataVec[holeIndex] = adjustValue;
+	}
+
+	template <class ElemType>
+	bool MyHeap<ElemType>::empty()
+	{
+		if (heapDataVec.size() <= 1)
+			return true;
+		else
+			return false;
+	}
+
+	template <class ElemType>
+	bool MyHeap<ElemType>::find(ElemType element)
+	{
+		for (int i = 1; i < heapDataVec.size(); i++)
+		{
+			if (heapDataVec[i]->point == element->point)
+				return true;
+		}
+		return false;
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::remove(ElemType element)
+	{
+		for (int i = 1; i < heapDataVec.size(); i++)
+		{
+			if (heapDataVec[i]->point == element->point)
+			{
+				heapDataVec.erase(heapDataVec.begin() + i);
+				numCounts--;
+				break;
+			}
+		}
+		this->makeHeap();
+	}
+
+	template <class ElemType>
+	int MyHeap<ElemType>::size()
+	{
+		return heapDataVec.size() - 1;
+	}
+
+	template <class ElemType>
+	void MyHeap<ElemType>::updateState(ElemType element)
+	{
+		for (int i = 1; i < heapDataVec.size(); i++)
+		{
+			if (heapDataVec[i]->point == element->point)
+			{
+				if (element->f < heapDataVec[i]->f)
+				{
+					heapDataVec[i]->f = element->f;
+				}
+				if (element->g < heapDataVec[i]->g)
+				{
+					this->remove(element);
+					this->insert(&element);
+				}
+				break;
+			}
+		}
+		this->makeHeap();
+	}
+
+	template <class ElemType>
+	ElemType MyHeap<ElemType>::getValue(ElemType element)
+	{
+		for (int i = 1; i < heapDataVec.size(); i++)
+		{
+			if (heapDataVec[i]->point == element->point)
+			{
+				return heapDataVec[i];
+			}
+		}
+		return NULL;
+	}
+
 
 	/*
 		@function The AStarPlannerNode class gives a suggested container to build your search tree nodes.
-		@attributes 
+		@attributes
 		f : the f value of the node
 		g : the cost from the start, for the node
 		point : the point in (x,0,z) space that corresponds to the current node
 		parent : the pointer to the parent AStarPlannerNode, so that retracing the path is possible.
-		@operators 
+		@operators
 		The greater than, less than and equals operator have been overloaded. This means that objects of this class can be used with these operators. Change the functionality of the operators depending upon your implementation
-
 	*/
+
 	class STEERLIB_API AStarPlannerNode{
 		public:
 			double f;
@@ -41,22 +272,37 @@ namespace SteerLib
 				g = _g;
 				parent = _parent;
 			}
+
+			AStarPlannerNode(Util::Point _point, double _g, double _f, AStarPlannerNode* _parent)
+			{
+				f = _f;
+				point = _point;
+				g = _g;
+				parent = _parent;
+			}
+
 			bool operator<(AStarPlannerNode other) const
-		    {
-		        return this->f < other.f;
-		    }
-		    bool operator>(AStarPlannerNode other) const
-		    {
-		        return this->f > other.f;
-		    }
-		    bool operator==(AStarPlannerNode other) const
-		    {
-		        return ((this->point.x == other.point.x) && (this->point.z == other.point.z));
-		    }
+			{
+				if (this->f == other.f)
+					return this->g < other.g;
+				return this->f < other.f;
+			}
+			bool operator>(AStarPlannerNode other) const
+			{
+				if (this->f == other.f)
+					return this->g > other.g;
+				return this->f > other.f;
+			}
+			bool operator==(AStarPlannerNode other) const
+			{
+				return ((this->point.x == other.point.x) && (this->point.z == other.point.z));
+			}
 
+			bool operator!=(AStarPlannerNode other) const
+			{
+				return ((this->point.x != other.point.x) || (this->point.z != other.point.z));
+			}
 	};
-
-	
 
 	class STEERLIB_API AStarPlanner{
 		public:
