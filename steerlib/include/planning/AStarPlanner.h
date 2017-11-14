@@ -27,7 +27,7 @@ using namespace SteerLib;
 
 namespace SteerLib
 { 
-		template <class ElemType>
+	template <class ElemType>
 	class MyHeap{
 	private:
 		int numCounts; // number in heap
@@ -273,14 +273,6 @@ namespace SteerLib
 				parent = _parent;
 			}
 
-			AStarPlannerNode(Util::Point _point, double _g, double _f, AStarPlannerNode* _parent)
-			{
-				f = _f;
-				point = _point;
-				g = _g;
-				parent = _parent;
-			}
-
 			bool operator<(AStarPlannerNode other) const
 			{
 				if (this->f == other.f)
@@ -329,6 +321,17 @@ namespace SteerLib
 			*/
 			Util::Point getPointFromGridIndex(int id);
 
+
+			float cal_hn(Util::Point p1, Util::Point p2);
+			float cal_distance(Util::Point p1, Util::Point p2);
+			void find_successor_wAStar(std::vector<SteerLib::AStarPlannerNode*>& successors, SteerLib::AStarPlannerNode* p, Util::Point goal);
+			bool weightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
+			void push_neighbors(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p);
+			void UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& fringe, MyHeap<SteerLib::AStarPlannerNode*>& expanded, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+
+
+
+
 			/*
 				@function computePath
 				DO NOT CHANGE THE DEFINITION OF THIS FUNCTION
@@ -340,7 +343,6 @@ namespace SteerLib
 				_gSpatialDatabase : The pointer to the GridDatabase2D from the agent
 				append_to_path : An optional argument to append to agent_path instead of overwriting it.
 			*/
-
 			bool computePath(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path = false);
 		private:
 			SteerLib::SpatialDataBaseInterface * gSpatialDatabase;
