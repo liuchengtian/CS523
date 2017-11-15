@@ -324,12 +324,18 @@ namespace SteerLib
 
 			float cal_hn(Util::Point p1, Util::Point p2);
 			float cal_distance(Util::Point p1, Util::Point p2);
-			void find_successor_wAStar(std::vector<SteerLib::AStarPlannerNode*>& successors, SteerLib::AStarPlannerNode* p, Util::Point goal);
-			bool weightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
+			void find_successor_wAStar(std::vector<SteerLib::AStarPlannerNode*>& successors, 
+				SteerLib::AStarPlannerNode* p, Util::Point goal);
+			bool weightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, 
+				SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
 			void push_neighbors(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p);
-			void UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& fringe, MyHeap<SteerLib::AStarPlannerNode*>& expanded, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
-
-
+			void UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& fringe, 
+				MyHeap<SteerLib::AStarPlannerNode*>& expanded, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, 
+				AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+			void improvePath(MyHeap<SteerLib::AStarPlannerNode*>& OPEN, MyHeap<SteerLib::AStarPlannerNode*>& CLOSED,
+				MyHeap<SteerLib::AStarPlannerNode*>& INCONS, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+			bool AStarPlanner::computeARAstar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, 
+				SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
 
 
 			/*

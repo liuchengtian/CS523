@@ -26,7 +26,9 @@
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
 #define method 0
-#define epsilon 1.5
+static float epsilon = 1.5;
+static float epsilon_ara = 1.5;
+
 
 namespace SteerLib
 {
@@ -126,77 +128,7 @@ namespace SteerLib
 		}
 	}
 
-	bool AStarPlanner::weightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path)
-	{
-		gSpatialDatabase = _gSpatialDatabase;
-		// Setup
-		MyHeap<SteerLib::AStarPlannerNode*> *fringe = new MyHeap<AStarPlannerNode*>;
-		MyHeap<SteerLib::AStarPlannerNode*> *expanded = new MyHeap<AStarPlannerNode*>;
-
-		SteerLib::AStarPlannerNode *startNode = new AStarPlannerNode(start, 0, 0, NULL);
-		SteerLib::AStarPlannerNode *goalNode = new AStarPlannerNode(goal, 999999999, 999999999, NULL);
-
-		fringe->insert(&startNode);
-
-		SteerLib::AStarPlannerNode* current = (fringe->top());
-
-		while (!fringe->empty())
-		{
-			current = (fringe->top());
-			fringe->pop();
-			//Find path
-			if (*current == *goalNode)
-			{
-				cout << "Path is found." << endl;
-				cout << "Length is " << current->g << endl;
-				cout << "Number of expanded nodes: " << expanded->size() << endl;
-				cout << "Number of generated nodes: " << fringe->size() + expanded->size() << endl;
-
-				while (current->point != start){
-					agent_path.push_back(current->point);
-					current = (current->parent);
-				}
-				agent_path.push_back(start);
-				reverse(agent_path.begin(), agent_path.end());
-				return true;
-			}
-
-			expanded->insert(&current);
-
-			std::vector<SteerLib::AStarPlannerNode*> successor;
-			find_successor_wAStar(successor, current, goal);
-
-			for (int i = 0; i < successor.size(); i++){
-				/* if neighbour in closed list continue*/
-				if (expanded->find(successor[i])){
-					continue;
-				}
-				else{
-					float tentGScore = current->g + cal_distance(current->point, successor[i]->point);
-					if (tentGScore < successor[i]->g){
-						(successor[i]->parent) = current;
-						successor[i]->g = tentGScore;
-						successor[i]->f = tentGScore + epsilon*cal_hn(successor[i]->point, goal);
-					}
-
-					if (!fringe->find(successor[i])){
-						fringe->insert(&successor[i]);
-					}
-					else
-					{
-						fringe->updateState(successor[i]);
-					}
-
-				}
-			}
-		}
-
-		std::cout << "no path with A*";
-		return false;
-	}
-
-
-	void AStarPlanner::push_neighbors(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p){
+		void AStarPlanner::push_neighbors(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p){
 		/* return all AStarPlannerNodes */
 
 		int x = p->point.x;
@@ -213,24 +145,24 @@ namespace SteerLib
 		points.push_back(Util::Point(x + 1, y, z - 1));
 	}
 
-	void AStarPlanner::UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& fringe, MyHeap<SteerLib::AStarPlannerNode*>& expanded, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight)
+	void AStarPlanner::UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& OPEN, MyHeap<SteerLib::AStarPlannerNode*>& CLOSED, MyHeap<SteerLib::AStarPlannerNode*>& INCONS, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight)
 	{
-		if (!fringe.find(s) && !expanded.find(s) && !inconsList.find(s))
+		if (!OPEN.find(s) && !CLOSED.find(s) && !INCONS.find(s))
 		{
 			s->g = 1000000;
 			s->f = s->g;
 		}
-		else if (inconsList.find(s))
+		else if (INCONS.find(s))
 		{
-			*s = *inconsList.getValue(s);
+			*s = *INCONS.getValue(s);
 		}
-		else if (fringe.find(s))
+		else if (OPEN.find(s))
 		{
-			*s = *fringe.getValue(s);
+			*s = *OPEN.getValue(s);
 		}
-		else if (expanded.find(s))
+		else if (CLOSED.find(s))
 		{
-			*s = *expanded.getValue(s);
+			*s = *CLOSED.getValue(s);
 		}
 
 		if (*s != *goalNode)
@@ -243,32 +175,270 @@ namespace SteerLib
 				if (canBeTraversed(gSpatialDatabase->getCellIndexFromLocation(points[i])))
 				{
 					AStarPlannerNode* ss = new AStarPlannerNode(points[i], -1, -1, s);
-					if (!fringe.find(ss) && !expanded.find(ss) && !inconsList.find(ss))
+					if (!OPEN.find(ss) && !CLOSED.find(ss) && !INCONS.find(ss))
 					{
 						ss->g = 999999999;
 						ss->f = 999999999;
 					}
-					else if (inconsList.find(ss))
+					else if (INCONS.find(ss))
 					{
-						ss = inconsList.getValue(ss);
+						ss = INCONS.getValue(ss);
 					}
-					else if (fringe.find(ss))
+					else if (OPEN.find(ss))
 					{
-						ss = fringe.getValue(ss);
+						ss = OPEN.getValue(ss);
 					}
-					else if (expanded.find(ss))
+					else if (CLOSED.find(ss))
 					{
-						ss = expanded.getValue(ss);
+						ss = CLOSED.getValue(ss);
 					}
 					minSucc = min(minSucc, ss->g + cal_distance(ss->point, s->point));
 				}
 			}
 		}
 
-		if (fringe.find(s))
+		if (OPEN.find(s))
 		{
-			fringe.remove(s);
+			OPEN.remove(s);
 		}
+	}
+
+	bool AStarPlanner::weightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path)
+	{
+		gSpatialDatabase = _gSpatialDatabase;
+		// Setup
+		MyHeap<SteerLib::AStarPlannerNode*> *OPEN = new MyHeap<AStarPlannerNode*>;
+		MyHeap<SteerLib::AStarPlannerNode*> *CLOSED = new MyHeap<AStarPlannerNode*>;
+
+		SteerLib::AStarPlannerNode *startNode = new AStarPlannerNode(start, 0, 0, NULL);
+		SteerLib::AStarPlannerNode *goalNode = new AStarPlannerNode(goal, 999999999, 999999999, NULL);
+
+		OPEN->insert(&startNode);
+
+		SteerLib::AStarPlannerNode* current = (OPEN->top());
+
+		while (!OPEN->empty())
+		{
+			current = (OPEN->top());
+			OPEN->pop();
+			//Find path
+			if (*current == *goalNode)
+			{
+				cout << "Path is found." << endl;
+				cout << "Length is " << current->g << endl;
+				cout << "Number of expanded nodes: " << CLOSED->size() << endl;
+				cout << "Number of generated nodes: " << OPEN->size() + CLOSED->size() << endl;
+
+				while (current->point != start){
+					agent_path.push_back(current->point);
+					current = (current->parent);
+				}
+				agent_path.push_back(start);
+				reverse(agent_path.begin(), agent_path.end());
+				return true;
+			}
+
+			CLOSED->insert(&current);
+
+			std::vector<SteerLib::AStarPlannerNode*> successor;
+			find_successor_wAStar(successor, current, goal);
+
+			for (int i = 0; i < successor.size(); i++){
+				/* if neighbour in CLOSED list continue*/
+				if (CLOSED->find(successor[i])){
+					continue;
+				}
+				else{
+					float tentGScore = current->g + cal_distance(current->point, successor[i]->point);
+					if (tentGScore < successor[i]->g){
+						(successor[i]->parent) = current;
+						successor[i]->g = tentGScore;
+						successor[i]->f = tentGScore + epsilon*cal_hn(successor[i]->point, goal);
+					}
+
+					if (!OPEN->find(successor[i])){
+						OPEN->insert(&successor[i]);
+					}
+					else
+					{
+						OPEN->updateState(successor[i]);
+					}
+
+				}
+			}
+		}
+
+		std::cout << "no path with A*";
+		return false;
+	}
+
+	void AStarPlanner::improvePath(MyHeap<SteerLib::AStarPlannerNode*>& OPEN, MyHeap<SteerLib::AStarPlannerNode*>& CLOSED,
+		MyHeap<SteerLib::AStarPlannerNode*>& INCONS, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight)
+	{
+		// goal node's fvalue = gvalue + weight * 0
+		while (goalNode->g > OPEN.top()->f)
+		{
+			AStarPlannerNode* s = OPEN.top();
+			OPEN.pop();
+			CLOSED.insert(&s);
+
+			std::vector<Util::Point> points;
+			findSuccessor(points, s);
+
+			for (int i = 0; i < points.size(); i++)
+			{
+				if (canBeTraversed(gSpatialDatabase->getCellIndexFromLocation(points[i])))
+				{
+					// ss is s'
+					AStarPlannerNode* ss = new AStarPlannerNode(points[i], -1, -1, s);
+					if (!OPEN.find(ss) && !CLOSED.find(ss) && !INCONS.find(ss))
+					{
+						ss->g = 1000000;
+						ss->f = ss->g;
+					}
+					else if (INCONS.find(ss))
+					{
+						ss = INCONS.getValue(ss);
+					}
+					else if (OPEN.find(ss))
+					{
+						ss = OPEN.getValue(ss);
+					}
+					else if (CLOSED.find(ss))
+					{
+						ss = CLOSED.getValue(ss);
+					}
+
+					float new_distance = s->g + calculate_dist(s->point, ss->point);
+					if (ss->g > new_distance)
+					{
+						(ss->parent) = s;
+						ss->g = new_distance;
+						ss->f = new_distance + weight * calculate_h(ss->point, goalNode->point);
+
+						if (!CLOSED.find(ss))
+						{
+							if (OPEN.find(ss))
+							{
+								OPEN.updateState(ss);
+							}
+							else
+							{
+								OPEN.insert(&ss);
+							}
+						}
+						else
+						{
+							if (INCONS.find(ss))
+							{
+								INCONS.updateState(ss);
+							}
+							else
+							{
+								INCONS.insert(&ss);
+							}
+						}
+					}
+					if (*ss == *goalNode)
+					{
+						*goalNode = *ss;
+						if (OPEN.find(goalNode))
+							OPEN.remove(goalNode);
+						if (INCONS.find(goalNode))
+							INCONS.remove(goalNode);
+					}
+				}
+			}
+		}
+	}
+
+	bool AStarPlanner::computeARAstar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path)
+	{
+		clock_t startTimer, endTimer;
+		double timeDuration = 50;
+		startTimer = clock();
+
+		gSpatialDatabase = _gSpatialDatabase;
+
+		MyHeap<SteerLib::AStarPlannerNode*> *OPEN = new MyHeap<AStarPlannerNode*>;
+		MyHeap<SteerLib::AStarPlannerNode*> *CLOSED = new MyHeap<AStarPlannerNode*>;
+		MyHeap<SteerLib::AStarPlannerNode*> *INCONS = new MyHeap<AStarPlannerNode*>;
+
+		SteerLib::AStarPlannerNode *startNode = new AStarPlannerNode(start, 0, calculate_h(start, goal), NULL);
+		SteerLib::AStarPlannerNode *goalNode = new AStarPlannerNode(goal, 999999999, 999999999, NULL);
+
+		OPEN->insert(&startNode);
+		improvePath(*OPEN, *CLOSED, *INCONS, startNode, goalNode, epsilon_ara);
+
+		AStarPlannerNode *current = goalNode;
+		while (current->point != start){
+			agent_path.push_back(current->point);
+			current = (current->parent);
+		}
+		agent_path.push_back(start);
+		reverse(agent_path.begin(), agent_path.end());
+
+		float minSucc = FLT_MAX;
+		if (!OPEN->empty())
+			minSucc = OPEN->top()->g + calculate_h(OPEN->top()->point, goal);
+		if (!INCONS->empty())
+			minSucc = min(minSucc, INCONS->top()->g + calculate_h(INCONS->top()->point, goal));
+		epsilon_ara2 = min(epsilon_ara, goalNode->g / minSucc);
+
+		while (epsilon_ara2 > 1)
+		{
+			epsilon_ara -= 0.002;
+
+			while (!INCONS->empty())
+			{
+				AStarPlannerNode* temp = INCONS->top();
+				INCONS->pop();
+				OPEN->insert(&temp);
+			}
+
+			for (int i = 1; i < OPEN->heapDataVec.size(); i++)
+			{
+				OPEN->heapDataVec[i]->f = OPEN->heapDataVec[i]->g + epsilon_ara*calculate_h(OPEN->heapDataVec[i]->point, goal);
+			}
+			OPEN->makeHeap();
+
+			while (!CLOSED->empty())
+			{
+				CLOSED->pop();
+			}
+			improvePath(*OPEN, *CLOSED, *INCONS, startNode, goalNode, epsilon_ara);
+
+			float minSucc = FLT_MAX;
+			if (!OPEN->empty())
+				minSucc = OPEN->top()->g + calculate_h(OPEN->top()->point, goal);
+			if (!INCONS->empty())
+				minSucc = min(minSucc, INCONS->top()->g + calculate_h(INCONS->top()->point, goal));
+			epsilon_ara2 = min(epsilon_ara, goalNode->g / minSucc);
+
+			agent_path.clear();
+			AStarPlannerNode *current = goalNode;
+			while (current->point != start){
+				agent_path.push_back(current->point);
+				current = (current->parent);
+			}
+			agent_path.push_back(start);
+			reverse(agent_path.begin(), agent_path.end());
+
+			endTimer = clock();
+			if (endTimer - startTimer > timeDuration)
+			{
+				cout << "run time is " << timeDuration << ", forced to stop." << endl;
+				break;
+			}
+		}
+
+		cout << "Path is found." << endl;
+		cout << "Length is " << goalNode->g << endl;
+		cout << "Number of expanded nodes: " << CLOSED->size() << endl;
+		cout << "Number of generated nodes: " << OPEN->size() + CLOSED->size() + INCONS->size();
+
+		std::cout << "find path" << endl;
+		return false;
 	}
 
 	bool AStarPlanner::computePath(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path)
