@@ -30,7 +30,13 @@ namespace SteerLib
 	template <class ElemType>
 	class MyHeap{
 	private:
-		int numCounts; // number in heap
+		int numCounts; 
+		bool comp(ElemType n1, ElemType n2)
+		{
+			if (n1->f == n2->f)
+				return n1->g > n2->g;
+			return n1->f > n2->f;
+		};
 
 	public:
 		MyHeap();
@@ -162,7 +168,7 @@ namespace SteerLib
 	{
 		// switch while node is greater than its parent
 		int parentIndex = holeIndex / 2;
-		while (holeIndex > StartIndex && (heapDataVec[parentIndex] > adjustValue))
+		while (holeIndex > StartIndex && comp(heapDataVec[parentIndex], adjustValue))
 		{
 			heapDataVec[holeIndex] = heapDataVec[parentIndex];
 			holeIndex = parentIndex;
@@ -247,16 +253,16 @@ namespace SteerLib
 		return NULL;
 	}
 
-
 	/*
-		@function The AStarPlannerNode class gives a suggested container to build your search tree nodes.
-		@attributes
-		f : the f value of the node
-		g : the cost from the start, for the node
-		point : the point in (x,0,z) space that corresponds to the current node
-		parent : the pointer to the parent AStarPlannerNode, so that retracing the path is possible.
-		@operators
-		The greater than, less than and equals operator have been overloaded. This means that objects of this class can be used with these operators. Change the functionality of the operators depending upon your implementation
+	@function The AStarPlannerNode class gives a suggested container to build your search tree nodes.
+	@attributes
+	f : the f value of the node
+	g : the cost from the start, for the node
+	point : the point in (x,0,z) space that corresponds to the current node
+	parent : the pointer to the parent AStarPlannerNode, so that retracing the path is possible.
+	@operators
+	The greater than, less than and equals operator have been overloaded. This means that objects of this class can be used with these operators. Change the functionality of the operators depending upon your implementation
+
 	*/
 
 	class STEERLIB_API AStarPlannerNode{
@@ -266,7 +272,15 @@ namespace SteerLib
 			double rhs;
 			Util::Point point;
 			AStarPlannerNode* parent;
-			AStarPlannerNode(Util::Point _point, double _g, double _f, AStarPlannerNode* _parent, double _rhs = 99999)
+			AStarPlannerNode(Util::Point _point, double _g, double _f, AStarPlannerNode* _parent)
+			{
+				f = _f;
+				point = _point;
+				g = _g;
+				parent = _parent;
+			}
+
+			AStarPlannerNode(Util::Point _point, double _g, double _f, AStarPlannerNode* _parent, double _rhs)
 			{
 				f = _f;
 				point = _point;
@@ -296,7 +310,7 @@ namespace SteerLib
 			{
 				return ((this->point.x != other.point.x) || (this->point.z != other.point.z));
 			}
-	};
+		};
 
 	class STEERLIB_API AStarPlanner{
 		public:
@@ -323,27 +337,6 @@ namespace SteerLib
 			*/
 			Util::Point getPointFromGridIndex(int id);
 
-
-			float cal_hn(Util::Point p1, Util::Point p2);
-			float cal_distance(Util::Point p1, Util::Point p2);
-			void find_successor_wAStar(std::vector<SteerLib::AStarPlannerNode*>& successors, 
-				SteerLib::AStarPlannerNode* p, Util::Point goal);
-			bool computeWeightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, 
-				SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
-			void find_neighbors(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p);
-			void UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& fringe, 
-				MyHeap<SteerLib::AStarPlannerNode*>& expanded, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, 
-				AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
-			void improvePath(MyHeap<SteerLib::AStarPlannerNode*>& OPEN, MyHeap<SteerLib::AStarPlannerNode*>& CLOSED,
-				MyHeap<SteerLib::AStarPlannerNode*>& INCONS, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
-			bool computeARAstar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, 
-				SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
-			float key1(AStarPlannerNode* s, Point start, float weight);
-			float key2(AStarPlannerNode* s, Point start, float weight);
-			void ComputeorImprovePath(MyHeap<SteerLib::AStarPlannerNode*>& OPEN, MyHeap<SteerLib::AStarPlannerNode*>& CLOSED,
-				MyHeap<SteerLib::AStarPlannerNode*>& INCONS, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
-			bool computeDAstar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, 
-				SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
 			/*
 				@function computePath
 				DO NOT CHANGE THE DEFINITION OF THIS FUNCTION
@@ -355,7 +348,32 @@ namespace SteerLib
 				_gSpatialDatabase : The pointer to the GridDatabase2D from the agent
 				append_to_path : An optional argument to append to agent_path instead of overwriting it.
 			*/
+			float AStarPlanner::cal_distance(Util::Point p1, Util::Point p2);
+
+			float AStarPlanner::cal_hn(Util::Point p1, Util::Point p2);
+
+			void AStarPlanner::findSuccessor(std::vector<SteerLib::AStarPlannerNode*>& successors, SteerLib::AStarPlannerNode* p, Util::Point goal);
+
+			bool AStarPlanner::computeWeightedAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
+
+			void AStarPlanner::findSuccessor(std::vector<Util::Point>& points, SteerLib::AStarPlannerNode* p);
+
+			void AStarPlanner::improvePath(MyHeap<SteerLib::AStarPlannerNode*>& openList, MyHeap<SteerLib::AStarPlannerNode*>& closedSet,
+				MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+
+			bool AStarPlanner::computeARAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
+
+			float AStarPlanner::key(AStarPlannerNode* s, Point start, float weight);
+
+			void AStarPlanner::UpdateState(AStarPlannerNode* s, MyHeap<SteerLib::AStarPlannerNode*>& openList, MyHeap<SteerLib::AStarPlannerNode*>& closedSet, MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+
+			void AStarPlanner::ComputeorImprovePath(MyHeap<SteerLib::AStarPlannerNode*>& openList, MyHeap<SteerLib::AStarPlannerNode*>& closedSet,
+				MyHeap<SteerLib::AStarPlannerNode*>& inconsList, AStarPlannerNode *startNode, AStarPlannerNode *goalNode, float weight);
+
+			bool AStarPlanner::computeDAStar(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path);
+
 			bool computePath(std::vector<Util::Point>& agent_path, Util::Point start, Util::Point goal, SteerLib::SpatialDataBaseInterface * _gSpatialDatabase, bool append_to_path = false);
+
 		private:
 			SteerLib::SpatialDataBaseInterface * gSpatialDatabase;
 	};
