@@ -20,6 +20,22 @@
 SearchAgent::SearchAgent()
 {
 	_enabled = false;
+
+	gSpatialDatabase->getItemsInRange(this->_neighbors, this->xMinIndex, this->xMaxIndex,
+		this->zMinIndex, this->zMaxIndex, dynamic_cast<SteerLib::SpatialDatabaseItemPtr>(this));
+	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin(); neighbour != _neighbors.end(); neighbour++)
+	{
+		SteerLib::ObstacleInterface * tmp_ob;
+		if (!(*neighbour)->isAgent())
+		{
+			tmp_ob = dynamic_cast<SteerLib::ObstacleInterface *>(*neighbour);
+			AxisAlignedBox bound = tmp_ob->getBounds();
+			tmp_ob->point_.x = (bound.xmin + bound.xmax)/2;
+			tmp_ob->point_.z = (bound.zmin + bound.zmax)/2;
+			obstacle.insert(tmp_ob->point_);
+		}
+	}
+
 }
 
 SearchAgent::~SearchAgent()
@@ -85,6 +101,8 @@ void SearchAgent::reset(const SteerLib::AgentInitialConditions & initialConditio
 	assert(_forward.length()!=0.0f);
 	assert(_goalQueue.size() != 0);
 	assert(_radius != 0.0f);
+
+	computePlan();
 }
 
 
@@ -122,14 +140,38 @@ void SearchAgent::computePlan()
 
 
 void SearchAgent::updateAI(float timeStamp, float dt, unsigned int frameNumber)
-{
-	Util::AutomaticFunctionProfiler profileThisFunction( &SearchAIGlobals::gPhaseProfilers->aiProfiler );
+{ 
+	vector<Point> temp;
+	bool same = true;
+	for (std::set<SteerLib::SpatialDatabaseItemPtr>::iterator neighbour = _neighbors.begin(); neighbour != _neighbors.end(); neighbour++)
+	{
+		SteerLib::ObstacleInterface * tmp_ob;
+		if (!(*neighbour)->isAgent())
+		{
+			tmp_ob = dynamic_cast<SteerLib::ObstacleInterface *>(*neighbour);
+			AxisAlignedBox bound = tmp_ob->getBounds();
+			tmp_ob->point_.x = (bound.xmin + bound.xmax)/2;
+			tmp_ob->point_.z = (bound.zmin + bound.zmax)/2;
+			if (obstacle.find(tmp_ob->point_) == obstacle.end())
+				same = false;
+			temp.push_back(tmp_ob->point_);
+		}
+	}
+	if (same == false)
+	{
+		obstacle.clear();
+		for (auto point : temp)
+			obstacle.insert(point);
+		this->computePlan();
+	}
 
-	
-	double steps = (DURATION/(double)__path.size());
-	if(timeStamp*dt > last_waypoint*steps)
-	{	
-		if(!_goalQueue.empty())
+	Util::AutomaticFunctionProfiler profileThisFunction(&SearchAIGlobals::gPhaseProfilers->aiProfiler);
+
+
+	double steps = (DURATION / (double)__path.size());
+	if (timeStamp*dt > last_waypoint*steps)
+	{
+		if (!_goalQueue.empty())
 		{
 			__position = _goalQueue.front().targetLocation;
 			std::cout<<"Waypoint: "<< __position;
